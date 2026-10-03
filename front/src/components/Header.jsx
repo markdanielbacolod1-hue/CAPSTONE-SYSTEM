@@ -4,9 +4,7 @@ export default function Header({ onLogin }) {
       <div className="mx-auto flex max-w-7xl items-center justify-between">
 
         <div className="flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-full border-2 border-white bg-[#f57696] text-black shadow-[3px_3px_0_#fff]">
-            <span className="text-xl">♨</span>
-          </div>
+          <div className="grid h-11 w-11 place-items-center rounded-full bg-[url('image-removebg-preview.png')] bg-cover bg-center border-2 border-white bg-[#f57696] text-black shadow-[3px_3px_0_#fff]"></div>
 
           <div className="leading-tight">
             <p className="text-xs font-black tracking-[0.16em]">

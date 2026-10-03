@@ -52,27 +52,13 @@ export default function Home({ onLogin, onBrowse }) {
 
             <div className="aspect-square rounded-full border-[10px] border-[#e62e87] bg-[#ffadd0] p-7 shadow-[8px_8px_0_#111]">
 
-              <div className="grid h-full place-items-center rounded-full border-4 border-dashed border-white bg-[#f57696]">
-
-                <div className="text-8xl">
-                  ♨
-                </div>
+              <div className="grid h-full place-items-center rounded-full bg-[url('image-removebg-preview.png')] bg-cover bg-center border-4 border-dashed border-white bg-[#f57696]">
 
               </div>
 
             </div>
 
-            <div className="absolute -bottom-6 -right-4 flex h-32 w-48 items-center justify-center border-4 border-black bg-white text-center shadow-[7px_7px_0_#111] sm:h-40 sm:w-56">
-
-              <div>
-                <div className="text-4xl text-[#f57696]">
-                  ♨
-                </div>
-
-                <p className="mt-2 text-xs font-black">
-                  BREAD & PASTRY
-                </p>
-              </div>
+            <div className="absolute bg-[url('coverfood.jpg')] bg-cover bg-center -bottom-6 -right-4 flex h-32 w-48 items-center justify-center border-4 border-black bg-white text-center shadow-[7px_7px_0_#111] sm:h-40 sm:w-56">
 
             </div>
 
