@@ -9,13 +9,13 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArchiveProvider, useArchive } from "./contexts/ArchiveContext";
-import { AuthPanel } from "./components/AuthPanel";
+import AuthPanel from "./components/AuthPanel";
 import { Archive } from "./components/Archive";
 import { Dashboard } from "./components/Dashboard";
 import { RecipeDetail } from "./components/RecipeDetail";
 import { TopBar } from "./components/TopBar";
 
-export function App() {
+export default function App() {
   return (
     <ArchiveProvider>
       <AppShell />

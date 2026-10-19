@@ -1,3 +1,4 @@
+
 import React from "react";
 import { ChefHatIcon } from "lucide-react";
 
@@ -10,30 +11,20 @@ export function BrandMark({ compact = false }) {
       >
         <ChefHatIcon size={24} strokeWidth={2.6} />
       </div>
+
       {!compact && (
         <div className="leading-tight text-white">
-          <p className="text-xs font-black tracking-[0.16em]">UUP</p>
-          <p className="text-sm font-extrabold">CULINARY ARCHIVE</p>
+          <p className="text-xs font-black tracking-[0.16em]">
+            UUP
+          </p>
+          <p className="text-sm font-extrabold">
+            CULINARY ARCHIVE
+          </p>
         </div>
       )}
     </div>
   );
 }
-
-
-src/components/AuthPanel.jsx
-
-import { useState } from "react";
-import {
-  ArrowLeftIcon,
-  EyeIcon,
-  EyeOffIcon,
-  HeartIcon,
-  KeyRoundIcon,
-  MailIcon,
-  ShieldCheckIcon,
-  UserRoundIcon,
-} from "lucide-react";
 
 const roleLabels = {
   student: "STUDENT PORTAL",

@@ -17,7 +17,7 @@ const roleLabels = {
   member: "COMMUNITY MEMBER",
 };
 
-export function AuthPanel({ onClose, onComplete }) {
+export default function AuthPanel({ onClose, onComplete }) {
   const [mode, setMode] = useState("choose");
   const [role, setRole] = useState("student");
   const [showPassword, setShowPassword] = useState(false);
