@@ -1,30 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+/* CRITICAL: THE FOLLOWING TAILWIND IMPORT MUST NEVER BE DELETED — DO NOT DELETE THIS COMMENT */
 @import "tailwindcss";
+/* END TAILWIND IMPORTS — ALL OTHER CSS MUST GO BELOW THIS LINE */
 
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-
-
-* {
-  box-sizing: border-box;
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
 }
 
-html {
-  scroll-behavior: smooth;
-}
-
-body {
-  margin: 0;
-  min-width: 320px;
-  font-family: Arial, Helvetica, sans-serif;
-  background: #fffafb;
-  color: #050505;
-}
-
-button,
-input {
-  font: inherit;
-}
-
-button {
-  cursor: pointer;
-}
+:root { font-family: Inter, Arial, sans-serif; color: #050505; background: #fffafb; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+button, input, textarea { font: inherit; }
+button { cursor: pointer; }
+.eyebrow { font-size: 0.7rem; line-height: 1; font-weight: 900; letter-spacing: 0.13em; }
+.page-title { margin-top: 0.4rem; font-size: clamp(2rem, 4vw, 2.8rem); line-height: 1; font-weight: 900; letter-spacing: -0.045em; text-transform: uppercase; }
+.primary-action { display: inline-flex; width: 100%; align-items: center; justify-content: center; gap: 0.5rem; border-radius: 0.75rem; border: 2px solid #000; background: #050505; padding: 0.75rem 1rem; color: #fff; font-size: 0.875rem; font-weight: 900; box-shadow: 4px 4px 0 #fbd2dd; transition: transform .16s ease, box-shadow .16s ease; }
+.primary-action:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #fbd2dd; }
+.auth-stage { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; overflow-y: auto; padding: 1.25rem; background: rgba(5, 5, 5, .72); backdrop-filter: blur(4px); }
+.auth-card { position: relative; width: 100%; border: 2px solid #111; background: #f57696; padding: 2.25rem; text-align: center; box-shadow: 12px 12px 0 #fff; }
+.auth-card::after { position: absolute; right: 0; bottom: 0; width: 86px; height: 86px; content: ''; background: #fff; clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+.auth-card h1 { margin: .65rem 0 0; font-size: 1.75rem; font-weight: 900; letter-spacing: -0.04em; }
+.auth-card p:not(.eyebrow) { margin: .5rem auto 0; max-width: 22rem; font-size: .875rem; }
+.close-button { position: absolute; left: 1rem; top: 1rem; display: grid; height: 2.25rem; width: 2.25rem; place-items: center; border: 2px solid #111; background: #fff; }
+.auth-seal { display: grid; height: 5rem; width: 5rem; margin: 0 auto; place-items: center; border: 4px solid #e62e87; border-radius: 999px; background: #ffadd0; box-shadow: 3px 3px 0 #111; }
+.auth-choice { position: relative; z-index: 1; display: flex; width: 100%; align-items: center; justify-content: center; gap: .6rem; margin-top: .9rem; border-radius: .75rem; background: #000; padding: .8rem; color: #fff; font-size: .9rem; font-weight: 900; }
+.input-wrap { position: relative; z-index: 1; display: flex; align-items: center; gap: .6rem; border: 2px solid #000; border-radius: .75rem; background: #fff; padding: .7rem .85rem; text-align: left; }
+.input-wrap input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; font-size: .875rem; }
+.input-wrap button { display: grid; place-items: center; }
+.field { margin-top: .25rem; display: block; width: 100%; border: 2px solid #f57696; border-radius: .5rem; padding: .75rem; font-size: .875rem; font-weight: 400; outline: 0; }
+.field:focus { border-color: #000; }
+@media (max-width: 640px) { .auth-card { padding: 2.75rem 1.25rem 1.5rem; } }
