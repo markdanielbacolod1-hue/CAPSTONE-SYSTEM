@@ -125,7 +125,7 @@ function Home({ onContinue, onBrowse, signedIn }) {
         <div className="absolute bottom-0 right-0 -z-10 h-[62%] w-[25%] bg-white [clip-path:polygon(100%_0,100%_100%,0_100%)]" />
         <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1.15fr_.85fr] lg:items-center">
           <div>
-            <p className="eyebrow">UUP HOSPITALITY MANAGEMENT</p>
+            <p className="eyebrow">UEP HOSPITALITY MANAGEMENT</p>
             <h1 className="mt-3 max-w-xl text-5xl font-black leading-[.92] tracking-[-.06em] sm:text-7xl">
               Welcome!
               <br />
@@ -153,8 +153,8 @@ function Home({ onContinue, onBrowse, signedIn }) {
           </div>
           <div className="relative mx-auto w-full max-w-md">
             <div className="aspect-square rounded-full border-10 border-[#e62e87] bg-[#ffadd0] p-7 shadow-[8px_8px_0_#111]">
-              <div className="grid h-full place-items-center rounded-full border-4 border-dashed border-white bg-[#f57696]">
-                <ChefHatIcon size={110} strokeWidth={1.4} />
+              <div className="grid h-full place-items-center rounded-full border-4 border-dashed border-white bg-[#f57696] bg-[url('/public/image-removebg-preview.png')] bg-cover bg-center text-black shadow-[3px_3px_0_#fff]">
+      
               </div>
             </div>
             <img
