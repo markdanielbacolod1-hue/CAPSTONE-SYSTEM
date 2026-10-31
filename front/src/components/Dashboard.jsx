@@ -14,11 +14,11 @@ import {
 } from "lucide-react";
 import { useArchive } from "../contexts/ArchiveContext";
 import { Archive } from "./Archive";
-import { Feed } from "./feed";
+import { Feed } from "./Feed";
 import { SubmissionForm } from "./SubmissionForm";
-
 export function Dashboard({ role, onSignOut, onOpenRecipe }) {
-  const { recipes, session, events } = useArchive();
+  const { recipes, session, events, canView, categories, ingredientCategories, ingredients } =
+    useArchive();
   const nav = getNavigation(role);
   const [tab, setTab] = useState(nav[0].id);
   const [notice, setNotice] = useState("");
@@ -27,8 +27,8 @@ export function Dashboard({ role, onSignOut, onOpenRecipe }) {
   const member = role === "member";
   const myName = session?.name ?? "";
   const mine = recipes.filter((recipe) => recipe.student === myName);
-  const saved = recipes.filter((recipe) => recipe.savedBy.includes(myName));
-  const liked = recipes.filter((recipe) => recipe.likedBy.includes(myName));
+  const saved = recipes.filter((recipe) => recipe.savedBy.includes(myName) && canView(recipe));
+  const liked = recipes.filter((recipe) => recipe.likedBy.includes(myName) && canView(recipe));
   const heading = admin
     ? "System administration"
     : student
@@ -55,13 +55,7 @@ export function Dashboard({ role, onSignOut, onOpenRecipe }) {
       <div className="mx-auto flex max-w-[1440px]">
         <aside className="hidden min-h-[calc(100vh-68px)] w-64 shrink-0 border-r-2 border-[#f57696] bg-white p-5 lg:block">
           <p className="mb-5 text-xs font-black tracking-widest text-neutral-500">
-            {admin
-              ? "SYSTEM CONTROL"
-              : member
-                ? "MY ACTIVITY"
-                : student
-                  ? "MY WORK"
-                  : "OVERVIEW"}
+            {admin ? "SYSTEM CONTROL" : member ? "MY ACTIVITY" : student ? "MY WORK" : "OVERVIEW"}
           </p>
           <nav className="space-y-1" aria-label="Dashboard navigation">
             {nav.map((item) => {
@@ -80,13 +74,8 @@ export function Dashboard({ role, onSignOut, onOpenRecipe }) {
             })}
           </nav>
           <div className="mt-10 border-t pt-5">
-            <p className="mb-2 text-xs font-black tracking-widest text-neutral-500">
-              SYSTEM
-            </p>
-            <button
-              onClick={onSignOut}
-              className="px-3 text-sm font-bold underline"
-            >
+            <p className="mb-2 text-xs font-black tracking-widest text-neutral-500">SYSTEM</p>
+            <button onClick={onSignOut} className="px-3 text-sm font-bold underline">
               Log out
             </button>
           </div>
@@ -107,20 +96,14 @@ export function Dashboard({ role, onSignOut, onOpenRecipe }) {
               <p className="text-sm text-neutral-600">{subtitle}</p>
             </div>
             {student && (
-              <button
-                onClick={() => setTab("submit")}
-                className="primary-action w-auto! px-4!"
-              >
+              <button onClick={() => setTab("submit")} className="primary-action w-auto! px-4!">
                 <FilePlus2Icon size={18} />
                 Submit new output
               </button>
             )}
           </div>
 
-          <nav
-            className="mb-6 flex flex-wrap gap-2 lg:hidden"
-            aria-label="Section tabs"
-          >
+          <nav className="mb-6 flex flex-wrap gap-2 lg:hidden" aria-label="Section tabs">
             {nav.map((item) => (
               <button
                 key={item.id}
@@ -140,9 +123,7 @@ export function Dashboard({ role, onSignOut, onOpenRecipe }) {
                 mine: mine.length,
                 saved: saved.length,
                 liked: liked.length,
-                pending: recipes.filter(
-                  (recipe) => recipe.decision === "Pending",
-                ).length,
+                pending: recipes.filter((recipe) => recipe.status === "Pending").length,
                 events: events.length,
               }}
               onViewAll={() => setTab(admin ? "recipes" : "submissions")}
@@ -154,7 +135,7 @@ export function Dashboard({ role, onSignOut, onOpenRecipe }) {
               title={student ? "My submissions" : "Recipe reviews"}
               caption={
                 student
-                  ? "Every output you have submitted this term."
+                  ? "Every output you have submitted, with its review status and remarks."
                   : "Approve or reject student submissions, then grade the approved work."
               }
               source={student ? mine : recipes}
@@ -163,11 +144,7 @@ export function Dashboard({ role, onSignOut, onOpenRecipe }) {
             />
           )}
           {tab === "submit" &&
-            (student ? (
-              <SubmissionForm onSubmitted={setNotice} />
-            ) : (
-              <FacultyStudents />
-            ))}
+            (student ? <SubmissionForm onSubmitted={setNotice} /> : <FacultyStudents />)}
           {tab === "saved" && (
             <Archive
               title="Saved recipes"
@@ -202,52 +179,75 @@ export function Dashboard({ role, onSignOut, onOpenRecipe }) {
               title={member ? "Recipes" : "Recipe management"}
               caption={
                 member
-                  ? "Browse active recipes, then like, save, or comment."
-                  : "Every record in the archive, including inactive entries."
+                  ? "Browse approved recipes, then like, save, or comment."
+                  : "Every record in the archive, including pending, rejected, and inactive entries."
               }
               visibility={member ? "public" : "all"}
               onOpenRecipe={onOpenRecipe}
             />
           )}
           {tab === "categories" && (
-            <ManagementList
-              title="Category management"
-              description="Maintain the taxonomy used across the culinary archive."
-              rows={[
-                ["Bread", "12 recipe records", "Active"],
-                ["Pastry", "21 recipe records", "Active"],
-                ["Cookies", "8 recipe records", "Active"],
-                ["Quick bread", "6 recipe records", "Active"],
-              ]}
-              onUpdate={setNotice}
-            />
+            <div className="space-y-6">
+              <ManagementList
+                title="Category management"
+                description="Recipe categories, used by the submission form and archive filters."
+                rows={categories.map((category) => {
+                  const count = recipes.filter(
+                    (recipe) => recipe.categoryId === category.id,
+                  ).length;
+                  return [
+                    category.name,
+                    `${count} recipe ${count === 1 ? "record" : "records"}`,
+                    category.active ? "Active" : "Inactive",
+                  ];
+                })}
+                onUpdate={setNotice}
+              />
+              <ManagementList
+                title="Ingredient categories"
+                description="Used to classify every ingredient a student adds to a recipe."
+                rows={ingredientCategories.map((category) => {
+                  const count = ingredients.filter(
+                    (ingredient) => ingredient.ingredientCategoryId === category.id,
+                  ).length;
+                  return [
+                    category.name,
+                    `${count} ${count === 1 ? "ingredient" : "ingredients"}`,
+                    "Active",
+                  ];
+                })}
+                onUpdate={setNotice}
+              />
+            </div>
           )}
           {tab === "roles" && (
             <ManagementList
               title="Role management"
               description="Control permissions for each account type."
               rows={[
-                ["Student", "Post, comment, like, and save", "Enabled"],
-                ["Faculty", "Review, grade, and archive recipes", "Enabled"],
-                ["Member", "Comment, like, and save only", "Enabled"],
                 [
-                  "Administrator",
-                  "Manage users, roles, categories, logs",
+                  "Student",
+                  "Submit recipes, track own submissions, comment, like, save",
                   "Enabled",
                 ],
+                ["Faculty", "Review, approve, reject, grade, and manage recipes", "Enabled"],
+                ["Member", "Browse approved recipes; comment, like, and save", "Enabled"],
+                ["Administrator", "Manage users, roles, categories, logs", "Enabled"],
               ]}
               onUpdate={setNotice}
             />
           )}
           {tab === "activity" && (
-            <Feed scope="admin" onOpenRecipe={onOpenRecipe} />
+            <div className="space-y-8">
+              <Feed scope="admin" onOpenRecipe={onOpenRecipe} />
+              <DuplicationLogTable onOpenRecipe={onOpenRecipe} />
+            </div>
           )}
         </div>
       </div>
     </main>
   );
 }
-
 function getNavigation(role) {
   if (role === "admin")
     return [
@@ -277,14 +277,19 @@ function getNavigation(role) {
       label: role === "student" ? "Submit output" : "Student management",
       icon: role === "student" ? FilePlus2Icon : UsersRoundIcon,
     },
-    ...(role === "student"
-      ? [{ id: "saved", label: "Saved recipes", icon: BookmarkIcon }]
-      : []),
+    ...(role === "student" ? [{ id: "saved", label: "Saved recipes", icon: BookmarkIcon }] : []),
   ];
 }
-
 function Overview({ role, counts, onViewAll, onOpenRecipe }) {
-  const { recipes } = useArchive();
+  const { recipes, session, isPublic, categoryName } = useArchive();
+  const moderator = role === "faculty" || role === "admin";
+  // Students see their own work; members see only the public archive; faculty and admin see everything.
+  const recent =
+    role === "student"
+      ? recipes.filter((recipe) => recipe.student === session?.name)
+      : role === "member"
+        ? recipes.filter(isPublic)
+        : recipes;
   const stats =
     role === "admin"
       ? [
@@ -307,33 +312,19 @@ function Overview({ role, counts, onViewAll, onOpenRecipe }) {
           ? [
               ["SAVED", String(counts.saved), "bookmarked recipes"],
               ["LIKED", String(counts.liked), "recipes you liked"],
-              [
-                "ACTIVE RECIPES",
-                String(recipes.filter((recipe) => recipe.active).length),
-                "available to browse",
-              ],
+              ["PUBLIC RECIPES", String(recipes.filter(isPublic).length), "approved and active"],
             ]
           : [
               ["TOTAL RECIPES", String(recipes.length), "in the archive"],
-              [
-                "AWAITING DECISION",
-                String(counts.pending),
-                "approve or reject",
-              ],
+              ["AWAITING DECISION", String(counts.pending), "approve or reject"],
               [
                 "APPROVED",
-                String(
-                  recipes.filter((recipe) => recipe.decision === "Approved")
-                    .length,
-                ),
-                "published to archive",
+                String(recipes.filter((recipe) => recipe.status === "Approved").length),
+                `${recipes.filter(isPublic).length} public, ${recipes.filter((recipe) => recipe.status === "Approved" && !recipe.active).length} inactive`,
               ],
               [
                 "REJECTED",
-                String(
-                  recipes.filter((recipe) => recipe.decision === "Rejected")
-                    .length,
-                ),
+                String(recipes.filter((recipe) => recipe.status === "Rejected").length),
                 "returned to students",
               ],
             ];
@@ -352,9 +343,7 @@ function Overview({ role, counts, onViewAll, onOpenRecipe }) {
         </p>
       </section>
 
-      <div
-        className={`grid gap-4 ${stats.length === 3 ? "md:grid-cols-3" : "md:grid-cols-4"}`}
-      >
+      <div className={`grid gap-4 ${stats.length === 3 ? "md:grid-cols-3" : "md:grid-cols-4"}`}>
         {stats.map(([label, value, caption]) => (
           <article key={label} className="rounded-2xl bg-[#fbd2dd] p-5">
             <p className="text-xs font-black">{label}</p>
@@ -378,28 +367,50 @@ function Overview({ role, counts, onViewAll, onOpenRecipe }) {
                 <th className="p-3">Recipe title</th>
                 <th className="p-3">Category</th>
                 <th className="p-3">Student</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">Visibility</th>
-                <th className="p-3">Origin</th>
+                <th className="p-3">Submitted</th>
+                {role !== "member" && (
+                  <>
+                    <th className="p-3">Status</th>
+                    <th className="p-3">Visibility</th>
+                  </>
+                )}
                 <th className="p-3">Action</th>
               </tr>
             </thead>
             <tbody>
-              {recipes.slice(0, 5).map((recipe) => (
+              {recent.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="p-6 text-center text-sm font-bold">
+                    No recipes yet.
+                  </td>
+                </tr>
+              )}
+              {recent.slice(0, 5).map((recipe) => (
                 <tr key={recipe.id} className="border-t border-[#fbd2dd]">
                   <td className="p-3 font-bold">
                     {recipe.title}
-                    <span className="block text-[11px] font-normal">
-                      {recipe.lab}
-                    </span>
+                    {recipe.version > 1 && (
+                      <span className="block text-[11px] font-normal">
+                        Version {recipe.version}
+                      </span>
+                    )}
                   </td>
-                  <td className="p-3">{recipe.category}</td>
+                  <td className="p-3">{categoryName(recipe.categoryId)}</td>
                   <td className="p-3">{recipe.student}</td>
-                  <td className="p-3">{recipe.status}</td>
-                  <td className="p-3">
-                    {recipe.active ? "Active" : "Inactive"}
-                  </td>
-                  <td className="p-3">{recipe.origin}</td>
+                  <td className="p-3 whitespace-nowrap">{recipe.submittedAt}</td>
+                  {role !== "member" && (
+                    <>
+                      <td className="p-3">
+                        {recipe.status === "Pending" ? "Pending review" : recipe.status}
+                      </td>
+                      <td className="p-3">
+                        {recipe.active ? "Active" : "Inactive"}
+                        {moderator && !isPublic(recipe) && (
+                          <span className="block text-[11px]">not public</span>
+                        )}
+                      </td>
+                    </>
+                  )}
                   <td className="p-3">
                     <button
                       onClick={() => onOpenRecipe(recipe.id)}
@@ -417,7 +428,61 @@ function Overview({ role, counts, onViewAll, onOpenRecipe }) {
     </>
   );
 }
-
+/** recipe_duplication_log, including blocked attempts that never became a recipe. */
+function DuplicationLogTable({ onOpenRecipe }) {
+  const { duplicationLogs, findRecipe } = useArchive();
+  const rows = [...duplicationLogs].sort((a, b) => b.id - a.id);
+  return (
+    <section>
+      <h2 className="text-xl font-black">Duplicate check log</h2>
+      <p className="text-sm text-neutral-600">
+        Every repository check, including submissions that were blocked. These are not approval
+        decisions.
+      </p>
+      <div className="mt-4 overflow-x-auto rounded-xl border border-[#f57696] bg-white">
+        <table className="min-w-full text-left text-sm">
+          <thead className="bg-[#fbd2dd] text-xs uppercase">
+            <tr>
+              <th className="p-3">Submitted title</th>
+              <th className="p-3">Student</th>
+              <th className="p-3">Result</th>
+              <th className="p-3">Closest record</th>
+              <th className="p-3">Checked</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((log) => {
+              const match = findRecipe(log.matchedRecipeId);
+              return (
+                <tr key={log.id} className="border-t border-[#fbd2dd]">
+                  <td className="p-3 font-bold">
+                    {log.recipeId ? (
+                      <button
+                        onClick={() => onOpenRecipe(log.recipeId)}
+                        className="text-left underline"
+                      >
+                        {log.attemptedTitle}
+                      </button>
+                    ) : (
+                      log.attemptedTitle
+                    )}
+                    {!log.recipeId && (
+                      <span className="block text-[11px] font-normal">not saved</span>
+                    )}
+                  </td>
+                  <td className="p-3">{log.studentName}</td>
+                  <td className="p-3 whitespace-nowrap">{log.result}</td>
+                  <td className="p-3">{match ? `${match.title} · ${log.similarity}%` : "—"}</td>
+                  <td className="p-3 whitespace-nowrap">{log.checkedAt}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
 function FacultyStudents() {
   return (
     <ManagementList
@@ -431,7 +496,6 @@ function FacultyStudents() {
     />
   );
 }
-
 function ManagementList({ title, description, rows, onUpdate }) {
   return (
     <section className="rounded-2xl border-2 border-[#f57696] bg-white p-6">
@@ -442,9 +506,7 @@ function ManagementList({ title, description, rows, onUpdate }) {
         </div>
         {onUpdate && (
           <button
-            onClick={() =>
-              onUpdate(`New record created in ${title.toLowerCase()}.`)
-            }
+            onClick={() => onUpdate(`New record created in ${title.toLowerCase()}.`)}
             className="rounded-lg bg-black px-4 py-2 text-sm font-bold text-white"
           >
             Add record
@@ -453,10 +515,7 @@ function ManagementList({ title, description, rows, onUpdate }) {
       </div>
       <div className="mt-5 divide-y divide-[#fbd2dd]">
         {rows.map(([name, detail, status]) => (
-          <div
-            key={name}
-            className="flex items-center justify-between gap-4 py-3"
-          >
+          <div key={name} className="flex items-center justify-between gap-4 py-3">
             <div>
               <p className="font-bold">{name}</p>
               <p className="text-xs text-neutral-600">{detail}</p>

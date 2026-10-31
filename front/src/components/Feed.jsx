@@ -5,12 +5,12 @@ import {
   CircleXIcon,
   EyeOffIcon,
   HeartIcon,
+  CopyIcon,
   MessageCircleIcon,
   StarIcon,
   UploadIcon,
 } from "lucide-react";
 import { useArchive } from "../contexts/ArchiveContext";
-
 const eventIcon = {
   submitted: <UploadIcon size={16} />,
   comment: <MessageCircleIcon size={16} />,
@@ -20,16 +20,15 @@ const eventIcon = {
   visibility: <EyeOffIcon size={16} />,
   approved: <CircleCheckIcon size={16} />,
   rejected: <CircleXIcon size={16} />,
+  duplicate: <CopyIcon size={16} />,
 };
-
 export function Feed({ scope, onOpenRecipe }) {
-  const { events, recipes, session } = useArchive();
+  const { events, recipes, session, isPublic } = useArchive();
   const visible = events.filter((event) => {
     const recipe = recipes.find((entry) => entry.id === event.recipeId);
     if (!recipe) return false;
-    if (scope === "student")
-      return recipe.student === session?.name || recipe.active;
-    if (scope === "member") return recipe.active && event.kind !== "visibility";
+    if (scope === "student") return recipe.student === session?.name || isPublic(recipe);
+    if (scope === "member") return isPublic(recipe) && event.kind !== "visibility";
     return true;
   });
   const heading =
@@ -63,7 +62,6 @@ export function Feed({ scope, onOpenRecipe }) {
     </section>
   );
 }
-
 function FeedRow({ event, onOpenRecipe }) {
   const { recipes } = useArchive();
   const recipe = recipes.find((entry) => entry.id === event.recipeId);

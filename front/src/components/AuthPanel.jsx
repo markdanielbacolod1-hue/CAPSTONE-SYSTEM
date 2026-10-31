@@ -9,29 +9,24 @@ import {
   ShieldCheckIcon,
   UserRoundIcon,
 } from "lucide-react";
-
 const roleLabels = {
   student: "STUDENT PORTAL",
   faculty: "FACULTY PORTAL",
   admin: "ADMINISTRATOR",
   member: "COMMUNITY MEMBER",
 };
-
-export default function AuthPanel({ onClose, onComplete }) {
+export function AuthPanel({ onClose, onComplete }) {
   const [mode, setMode] = useState("choose");
   const [role, setRole] = useState("student");
   const [showPassword, setShowPassword] = useState(false);
-
   const submit = (event) => {
     event.preventDefault();
     onComplete(role);
   };
-
   const selectRole = (nextRole) => {
     setRole(nextRole);
     setMode("login");
   };
-
   if (mode === "choose")
     return (
       <div className="auth-stage">
@@ -66,7 +61,6 @@ export default function AuthPanel({ onClose, onComplete }) {
         </section>
       </div>
     );
-
   return (
     <div className="auth-stage">
       <section className="auth-card max-w-lg">
@@ -108,11 +102,7 @@ export default function AuthPanel({ onClose, onComplete }) {
           </label>
           <label className="input-wrap">
             <KeyRoundIcon size={18} />
-            <input
-              required
-              type={showPassword ? "text" : "password"}
-              placeholder="Password"
-            />
+            <input required type={showPassword ? "text" : "password"} placeholder="Password" />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}

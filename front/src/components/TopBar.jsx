@@ -1,7 +1,6 @@
 import React from "react";
 import { LayoutDashboardIcon, LogOutIcon, UserRoundIcon } from "lucide-react";
 import { BrandMark } from "./BrandMark";
-
 export function TopBar({
   view,
   signedIn,

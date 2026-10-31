@@ -9,12 +9,11 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArchiveProvider, useArchive } from "./contexts/ArchiveContext";
-import AuthPanel from "./components/AuthPanel";
+import { AuthPanel } from "./components/AuthPanel";
 import { Archive } from "./components/Archive";
 import { Dashboard } from "./components/Dashboard";
 import { RecipeDetail } from "./components/RecipeDetail";
 import { TopBar } from "./components/TopBar";
-
 export default function App() {
   return (
     <ArchiveProvider>
@@ -22,7 +21,6 @@ export default function App() {
     </ArchiveProvider>
   );
 }
-
 function AppShell() {
   const { session, recipes, signIn, signOut } = useArchive();
   const [view, setView] = useState("home");
@@ -61,9 +59,7 @@ function AppShell() {
             exit={{ opacity: 0 }}
           >
             <Home
-              onContinue={() =>
-                session ? setView(session.role) : setAuthOpen(true)
-              }
+              onContinue={() => (session ? setView(session.role) : setAuthOpen(true))}
               onBrowse={() => setView("archive")}
               signedIn={Boolean(session)}
             />
@@ -79,21 +75,14 @@ function AppShell() {
             <Archive onOpenRecipe={setOpenRecipeId} />
           </motion.div>
         )}
-        {(view === "student" ||
-          view === "faculty" ||
-          view === "admin" ||
-          view === "member") && (
+        {(view === "student" || view === "faculty" || view === "admin" || view === "member") && (
           <motion.div
             key={view}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <Dashboard
-              role={view}
-              onSignOut={handleSignOut}
-              onOpenRecipe={setOpenRecipeId}
-            />
+            <Dashboard role={view} onSignOut={handleSignOut} onOpenRecipe={setOpenRecipeId} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -108,16 +97,10 @@ function AppShell() {
           }}
         />
       )}
-      {authOpen && (
-        <AuthPanel
-          onClose={() => setAuthOpen(false)}
-          onComplete={completeAuth}
-        />
-      )}
+      {authOpen && <AuthPanel onClose={() => setAuthOpen(false)} onComplete={completeAuth} />}
     </div>
   );
 }
-
 function Home({ onContinue, onBrowse, signedIn }) {
   return (
     <main>
@@ -132,16 +115,12 @@ function Home({ onContinue, onBrowse, signedIn }) {
               HM <span className="text-white">STUDENTS</span>
             </h1>
             <p className="mt-6 max-w-lg text-sm font-bold sm:text-base">
-              Web-based Culinary Archive and Recipe Repository System for the
-              UEP Hospitality Management program.
+              Web-based Culinary Archive and Recipe Repository System for the UEP Hospitality
+              Management program.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <button
-                onClick={onContinue}
-                className="primary-action w-auto! px-6!"
-              >
-                {signedIn ? "GO TO WORKSPACE" : "CONTINUE"}{" "}
-                <ArrowRightIcon size={17} />
+              <button onClick={onContinue} className="primary-action w-auto! px-6!">
+                {signedIn ? "GO TO WORKSPACE" : "CONTINUE"} <ArrowRightIcon size={17} />
               </button>
               <button
                 onClick={onBrowse}
@@ -196,9 +175,8 @@ function Home({ onContinue, onBrowse, signedIn }) {
               to lasting knowledge.
             </h2>
             <p className="mt-4 max-w-md text-neutral-600">
-              Students submit their lab recipes, faculty review and grade the
-              work, and the wider community discovers, discusses, and saves the
-              results.
+              Students submit their lab recipes, faculty review and grade the work, and the wider
+              community discovers, discusses, and saves the results.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -207,16 +185,8 @@ function Home({ onContinue, onBrowse, signedIn }) {
               label="Submit"
               text="Students post outputs and declare originality."
             />
-            <FlowStep
-              number="02"
-              label="Review"
-              text="Faculty comment, grade, and archive."
-            />
-            <FlowStep
-              number="03"
-              label="Engage"
-              text="Members like, save, and discuss recipes."
-            />
+            <FlowStep number="02" label="Review" text="Faculty comment, grade, and archive." />
+            <FlowStep number="03" label="Engage" text="Members like, save, and discuss recipes." />
           </div>
         </div>
       </section>
@@ -225,9 +195,7 @@ function Home({ onContinue, onBrowse, signedIn }) {
         <div className="mx-auto flex max-w-7xl flex-col justify-between gap-5 md:flex-row md:items-center">
           <div>
             <p className="eyebrow text-[#f57696]!">EXPLORE THE COLLECTION</p>
-            <h2 className="mt-2 text-3xl font-black">
-              Find recipes made by your community.
-            </h2>
+            <h2 className="mt-2 text-3xl font-black">Find recipes made by your community.</h2>
           </div>
           <button
             onClick={onBrowse}
@@ -240,7 +208,6 @@ function Home({ onContinue, onBrowse, signedIn }) {
     </main>
   );
 }
-
 function Notice({ icon, text }) {
   return (
     <article className="flex min-h-28 flex-col justify-between rounded-2xl bg-black p-5 text-white shadow-[5px_5px_0_#ffb0c3]">
@@ -249,7 +216,6 @@ function Notice({ icon, text }) {
     </article>
   );
 }
-
 function FlowStep({ number, label, text }) {
   return (
     <article className="border-2 border-black bg-white p-4 shadow-[4px_4px_0_#f57696]">

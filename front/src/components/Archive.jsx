@@ -10,7 +10,6 @@ import {
 import { useArchive } from "../contexts/ArchiveContext";
 import { ReviewActions } from "./ReviewActions";
 import { StatusChips } from "./StatusChips";
-
 export function Archive({
   title = "Recipe archive",
   caption = "Browse student work, culinary outputs, and archived recipes.",
@@ -18,21 +17,34 @@ export function Archive({
   visibility = "public",
   onOpenRecipe,
 }) {
-  const { recipes } = useArchive();
+  const { recipes, isPublic, canView, categories, categoryName } = useArchive();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
   const pool = source ?? recipes;
+  // Public browsing filters by category; review views filter by submission status and visibility.
+  const filters =
+    visibility === "public"
+      ? [
+          "All",
+          ...categories.filter((category) => category.active).map((category) => category.name),
+        ]
+      : ["All", "Pending", "Approved", "Rejected", "Inactive"];
   const filtered = useMemo(
     () =>
       pool
-        .filter((recipe) => (visibility === "public" ? recipe.active : true))
-        .filter((recipe) => filter === "All" || recipe.status === filter)
+        .filter((recipe) => (visibility === "public" ? isPublic(recipe) : canView(recipe)))
+        .filter((recipe) => {
+          if (filter === "All") return true;
+          if (visibility === "public") return categoryName(recipe.categoryId) === filter;
+          if (filter === "Inactive") return !recipe.active;
+          return recipe.status === filter;
+        })
         .filter((recipe) =>
-          `${recipe.title} ${recipe.category} ${recipe.student}`
+          `${recipe.title} ${categoryName(recipe.categoryId)} ${recipe.student}`
             .toLowerCase()
             .includes(query.toLowerCase()),
         ),
-    [filter, pool, query, visibility],
+    [canView, categoryName, filter, isPublic, pool, query, visibility],
   );
   return (
     <section className="mx-auto max-w-6xl px-4 py-10 sm:px-7">
@@ -57,29 +69,23 @@ export function Archive({
       <div
         className="mb-5 flex flex-wrap gap-2"
         role="group"
-        aria-label="Recipe status filter"
+        aria-label={visibility === "public" ? "Recipe category filter" : "Recipe status filter"}
       >
-        {["All", "Submitted", "In Review", "Archived", "Rejected"].map(
-          (item) => (
-            <button
-              key={item}
-              onClick={() => setFilter(item)}
-              aria-pressed={filter === item}
-              className={`rounded-full border border-[#f57696] px-4 py-1.5 text-sm font-bold ${filter === item ? "bg-[#fbd2dd]" : "bg-white"}`}
-            >
-              {item}
-            </button>
-          ),
-        )}
+        {filters.map((item) => (
+          <button
+            key={item}
+            onClick={() => setFilter(item)}
+            aria-pressed={filter === item}
+            className={`rounded-full border border-[#f57696] px-4 py-1.5 text-sm font-bold ${filter === item ? "bg-[#fbd2dd]" : "bg-white"}`}
+          >
+            {item}
+          </button>
+        ))}
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {filtered.map((recipe) => (
-          <RecipeCard
-            key={recipe.id}
-            recipe={recipe}
-            onOpenRecipe={onOpenRecipe}
-          />
+          <RecipeCard key={recipe.id} recipe={recipe} onOpenRecipe={onOpenRecipe} />
         ))}
       </div>
 
@@ -92,19 +98,14 @@ export function Archive({
     </section>
   );
 }
-
 function RecipeCard({ recipe, onOpenRecipe }) {
   const { isLiked, can } = useArchive();
   return (
     <article
       className={`flex flex-col overflow-hidden rounded-2xl border-2 border-[#f57696] bg-white shadow-[5px_5px_0_#111] ${recipe.active ? "" : "opacity-80"}`}
     >
-      {recipe.image ? (
-        <img
-          src={recipe.image}
-          alt={recipe.title}
-          className="h-40 w-full object-cover"
-        />
+      {recipe.dishPhoto ? (
+        <img src={recipe.dishPhoto} alt={recipe.title} className="h-40 w-full object-cover" />
       ) : (
         <div className="grid h-40 w-full place-items-center bg-[#fbd2dd]">
           <ChefHatIcon size={44} strokeWidth={1.5} />
@@ -113,29 +114,22 @@ function RecipeCard({ recipe, onOpenRecipe }) {
       <div className="flex flex-1 flex-col p-4">
         <StatusChips recipe={recipe} compact />
         <h2 className="mt-3 font-extrabold">{recipe.title}</h2>
-        <p className="mt-1 text-xs text-neutral-600">
-          {recipe.student} · {recipe.lab}
-        </p>
+        <p className="mt-1 text-xs text-neutral-600">by {recipe.student}</p>
         <div className="mt-3 flex items-center gap-3 text-xs text-neutral-600">
           <span className="flex items-center gap-1">
-            <HeartIcon
-              size={13}
-              className={isLiked(recipe) ? "fill-current" : ""}
-            />
+            <HeartIcon size={13} className={isLiked(recipe) ? "fill-current" : ""} />
             {recipe.likedBy.length}
           </span>
           <span className="flex items-center gap-1">
             <MessageCircleIcon size={13} />
             {recipe.comments.length}
           </span>
-          {recipe.grade && (
-            <span className="font-bold">Grade {recipe.grade.score}</span>
-          )}
+          {recipe.grade && <span className="font-bold">Grade {recipe.grade.score}</span>}
         </div>
         <div className="mt-auto flex items-center justify-between pt-4 text-xs">
           <span className="flex items-center gap-1">
             <Clock3Icon size={13} />
-            {recipe.date}
+            Submitted {recipe.submittedAt}
           </span>
           <button
             onClick={() => onOpenRecipe(recipe.id)}
@@ -144,7 +138,7 @@ function RecipeCard({ recipe, onOpenRecipe }) {
             VIEW
           </button>
         </div>
-        {can.grade && recipe.decision === "Pending" && (
+        {can.grade && recipe.status === "Pending" && (
           <ReviewActions recipe={recipe} layout="inline" />
         )}
       </div>
