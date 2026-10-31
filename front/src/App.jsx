@@ -133,7 +133,7 @@ function Home({ onContinue, onBrowse, signedIn }) {
             </h1>
             <p className="mt-6 max-w-lg text-sm font-bold sm:text-base">
               Web-based Culinary Archive and Recipe Repository System for the
-              UUP Hospitality Management program.
+              UEP Hospitality Management program.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <button

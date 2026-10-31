@@ -6,6 +6,7 @@ export function BrandMark({ compact = false }) {
   return (
     <div className="flex items-center gap-3">
       <div
+<<<<<<< HEAD
         className="grid h-11 w-11 place-items-center bg-[url('/public/image-removebg-preview.png')] bg-cover bg-center rounded-full border-2 border-white bg-[#f57696] text-black shadow-[3px_3px_0_#fff]"
         aria-hidden="true"
       >
@@ -16,8 +17,16 @@ export function BrandMark({ compact = false }) {
           <p className="text-xs font-black tracking-[0.16em]">
             UEP
           </p>
+=======
+        className="grid h-11 w-11 place-items-center rounded-full border-2 border-white bg-[url('image-removebg-preview.png')] bg-cover bg-center bg-[#f57696] text-black shadow-[3px_3px_0_#fff]"
+        aria-hidden="true"
+      ></div>
+
+      {!compact && (
+        <div className="leading-tight text-white">
+>>>>>>> 3a3734d (fix logo)
           <p className="text-sm font-extrabold">
-            CULINARY ARCHIVE
+            UEP CULINARY ARCHIVE
           </p>
         </div>
       )}
