@@ -1,0 +1,3 @@
+const r=require("express").Router(),c=require("../controllers/ingredientController"),{authenticate}=require("../middleware/authMiddleware"),{allowRoles}=require("../middleware/roleMiddleware");
+r.get("/",c.list);r.post("/",authenticate,allowRoles("Admin"),c.create);r.put("/:id",authenticate,allowRoles("Admin"),c.update);r.delete("/:id",authenticate,allowRoles("Admin"),c.remove);
+r.get("/categories/list",c.listCategories);r.post("/categories",authenticate,allowRoles("Admin"),c.createCategory);r.put("/categories/:id",authenticate,allowRoles("Admin"),c.updateCategory);r.delete("/categories/:id",authenticate,allowRoles("Admin"),c.removeCategory);module.exports=r;
