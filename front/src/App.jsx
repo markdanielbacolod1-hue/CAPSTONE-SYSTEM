@@ -22,17 +22,48 @@ export default function App() {
   );
 }
 function AppShell() {
-  const { session, recipes, signIn, signOut } = useArchive();
+  const { session, recipes, signIn, signUp, signOut, refreshArchive, fetchRecipe } = useArchive();
   const [view, setView] = useState("home");
   const [authOpen, setAuthOpen] = useState(false);
-  const [openRecipeId, setOpenRecipeId] = useState(null);
-  const openRecipe = openRecipeId
-    ? (recipes.find((recipe) => recipe.id === openRecipeId) ?? null)
-    : null;
-  const completeAuth = (role) => {
-    signIn(role);
-    setAuthOpen(false);
-    setView(role);
+  const [openRecipe, setOpenRecipe] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const openRecipeById = async (recipeId) => {
+    setDetailLoading(true);
+    try {
+      const detail = await fetchRecipe(recipeId);
+      setOpenRecipe(detail);
+    } catch (error) {
+      window.alert(error.message || "Unable to load recipe details.");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+  const [authBusy, setAuthBusy] = useState(false);
+  const completeAuth = async (payload) => {
+    setAuthBusy(true);
+    try {
+      if (payload.mode === "signup") {
+        await signUp({
+          username: payload.username,
+          password: payload.password,
+          fullName: payload.fullName,
+          email: payload.email,
+          role: payload.backendRole,
+          studentNumber: payload.studentNumber,
+          course: payload.course,
+          yearLevel: payload.yearLevel,
+        });
+        // Registration succeeds first; the user then signs in with the same credentials.
+        await signIn(payload.email, payload.password);
+      } else {
+        await signIn(payload.identifier, payload.password);
+      }
+      const nextRole = payload.role;
+      setAuthOpen(false);
+      setView(nextRole);
+    } finally {
+      setAuthBusy(false);
+    }
   };
   const handleSignOut = () => {
     signOut();
@@ -72,7 +103,7 @@ function AppShell() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <Archive onOpenRecipe={setOpenRecipeId} />
+            <Archive onOpenRecipe={openRecipeById} />
           </motion.div>
         )}
         {(view === "student" || view === "faculty" || view === "admin" || view === "member") && (
@@ -82,22 +113,23 @@ function AppShell() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <Dashboard role={view} onSignOut={handleSignOut} onOpenRecipe={setOpenRecipeId} />
+            <Dashboard role={view} onSignOut={handleSignOut} onOpenRecipe={openRecipeById} />
           </motion.div>
         )}
       </AnimatePresence>
 
+      {detailLoading && <div className="fixed inset-0 z-50 grid place-items-center bg-black/40"><p className="rounded-xl bg-white px-5 py-3 font-bold">Loading recipe details...</p></div>}
       {openRecipe && (
         <RecipeDetail
           recipe={openRecipe}
-          onClose={() => setOpenRecipeId(null)}
+          onClose={() => setOpenRecipe(null)}
           onRequestSignIn={() => {
-            setOpenRecipeId(null);
+            setOpenRecipe(null);
             setAuthOpen(true);
           }}
         />
       )}
-      {authOpen && <AuthPanel onClose={() => setAuthOpen(false)} onComplete={completeAuth} />}
+      {authOpen && <AuthPanel onClose={() => setAuthOpen(false)} onComplete={completeAuth} busy={authBusy} />}
     </div>
   );
 }

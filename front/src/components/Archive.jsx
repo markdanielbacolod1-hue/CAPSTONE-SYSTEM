@@ -17,7 +17,7 @@ export function Archive({
   visibility = "public",
   onOpenRecipe,
 }) {
-  const { recipes, isPublic, canView, categories, categoryName } = useArchive();
+  const { recipes, isPublic, canView, categories, categoryName, archiveLoading, archiveError, refreshArchive } = useArchive();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
   const pool = source ?? recipes;
@@ -83,13 +83,21 @@ export function Archive({
         ))}
       </div>
 
+      {archiveError && (
+        <div className="mb-5 rounded-xl border-2 border-red-300 bg-red-50 p-4 text-sm text-red-700">
+          <p className="font-bold">Could not load recipes from the database.</p>
+          <p className="mt-1">{archiveError}</p>
+          <button onClick={refreshArchive} className="mt-3 rounded-lg border border-red-400 px-3 py-1.5 font-bold">Try again</button>
+        </div>
+      )}
+      {archiveLoading && <p className="mb-5 text-sm font-bold text-neutral-600">Loading recipes from database...</p>}
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {filtered.map((recipe) => (
           <RecipeCard key={recipe.id} recipe={recipe} onOpenRecipe={onOpenRecipe} />
         ))}
       </div>
 
-      {filtered.length === 0 && (
+      {!archiveLoading && !archiveError && filtered.length === 0 && (
         <div className="rounded-2xl border-2 border-dashed border-[#f57696] p-12 text-center">
           <BookOpenIcon className="mx-auto mb-3" />
           <p className="font-bold">No recipes found</p>

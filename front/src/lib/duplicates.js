@@ -1,19 +1,3 @@
-/**
- * Duplication rules, applied before a recipe row is written. Every check is
- * written to recipe_duplication_log, including attempts that were blocked.
- *
- * - Similarity mixes title words (55%) and ingredient names (45%), plus 10
- *   points when the category matches.
- * - Another student's recipe at 80% or more blocks the submission.
- * - Another student's recipe between 50% and 79% is a possible duplicate: the
- *   student may submit after acknowledging it, and faculty see the flag.
- * - The student's own earlier recipe at 50% or more must be submitted as a
- *   revised version, which records original_recipe_id and bumps version_no.
- *   A recipe still pending review cannot be revised yet.
- * - Rejected recipes by other students are not compared.
- * - Passing the check never marks a recipe original; that stays the
- *   student's declaration and the faculty's decision.
- */
 export const BLOCK_AT = 80;
 export const WARN_AT = 50;
 export function checkDuplicate(draft, recipes, ingredientNamesFor) {

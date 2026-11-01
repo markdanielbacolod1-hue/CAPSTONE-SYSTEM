@@ -43,8 +43,8 @@ export function RecipeDetail({ recipe, onClose, onRequestSignIn }) {
   const publicRecipe = isPublic(recipe);
   const showReview = canSeeReview(recipe);
   // Joined through recipe_ingredient and recipe_step on this recipe_id only.
-  const ingredientLines = getRecipeIngredients(recipe.id);
-  const steps = getRecipeSteps(recipe.id);
+  const ingredientLines = recipe.ingredients?.length ? recipe.ingredients : getRecipeIngredients(recipe.id);
+  const steps = recipe.steps?.length ? recipe.steps : getRecipeSteps(recipe.id);
   const duplicationLog = showReview ? getDuplicationLog(recipe.id) : null;
   const original = findRecipe(recipe.originalRecipeId);
   const submitComment = (event) => {

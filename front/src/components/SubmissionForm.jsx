@@ -62,7 +62,23 @@ export function SubmissionForm({ onSubmitted }) {
   }
   const pickFile = (setter) => (event) => {
     const file = event.target.files?.[0];
-    setter(file ? { url: URL.createObjectURL(file), name: file.name } : null);
+    if (!file) return setter(null);
+    const isPhoto = file.type.startsWith("image/");
+    const valid = isPhoto
+      ? ["image/jpeg", "image/png", "image/webp"].includes(file.type)
+      : file.type === "application/pdf";
+    if (!valid) {
+      setError(isPhoto ? "Use a JPG, PNG, or WEBP image." : "Please choose a PDF file.");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError("Each uploaded file must be 10 MB or smaller.");
+      event.target.value = "";
+      return;
+    }
+    setError("");
+    setter({ file, url: URL.createObjectURL(file), name: file.name });
   };
   const reset = () => {
     setTitle("");
@@ -79,17 +95,19 @@ export function SubmissionForm({ onSubmitted }) {
     setAcknowledged(false);
     setError("");
   };
-  const submit = (event) => {
+  const [submitting, setSubmitting] = useState(false);
+  const submit = async (event) => {
     event.preventDefault();
     if (!photo || !pdf) return setError("Attach both the dish photo and the recipe PDF.");
     if (check?.result === "Possible duplicate" && !acknowledged)
       return setError("Confirm that you have reviewed the possible duplicate before submitting.");
-    const result = addRecipe({
+    setSubmitting(true);
+    const result = await addRecipe({
       title,
       description,
       categoryId,
-      dishPhoto: photo.url,
-      pdfFile: pdf.url,
+      dishPhoto: photo.file,
+      pdfFile: pdf.file,
       pdfName: pdf.name,
       prepTime: prep,
       cookTime: cook,
@@ -99,6 +117,7 @@ export function SubmissionForm({ onSubmitted }) {
       ingredients: ingredients.filter((row) => row.name.trim()),
       steps: steps.filter((step) => step.instruction.trim()),
     });
+    setSubmitting(false);
     if (!result.ok) return setError(result.message);
     onSubmitted(
       `${result.recipe.title} was submitted and is pending faculty review. Duplicate check: ${result.check.result.toLowerCase()}.`,
@@ -381,7 +400,9 @@ export function SubmissionForm({ onSubmitted }) {
         >
           Clear form
         </button>
-        <button className="primary-action w-auto! px-5!">Submit for review</button>
+        <button disabled={submitting} className="primary-action w-auto! px-5! disabled:cursor-wait disabled:opacity-60">
+          {submitting ? "Submitting..." : "Submit for review"}
+        </button>
       </div>
     </form>
   );

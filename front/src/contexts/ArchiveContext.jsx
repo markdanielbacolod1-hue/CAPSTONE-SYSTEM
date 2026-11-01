@@ -1,15 +1,6 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
-import {
-  initialCategories,
-  initialDuplicationLogs,
-  initialEvents,
-  initialIngredientCategories,
-  initialIngredients,
-  initialRecipeIngredients,
-  initialRecipes,
-  initialRecipeSteps,
-} from "../data/recipes";
 import { checkDuplicate } from "../lib/duplicates";
+import { api, authApi, getStoredUser, getToken } from "../lib/api";
 const displayNames = {
   student: "Maria Santos",
   faculty: "Jero Rey Sosa",
@@ -35,15 +26,22 @@ const today = () =>
 const nextNumber = (rows) => rows.reduce((max, entry) => Math.max(max, entry.id), 0) + 1;
 const normalise = (text) => text.trim().toLowerCase().replace(/\s+/g, " ");
 export function ArchiveProvider({ children }) {
-  const [session, setSession] = useState(null);
-  const [recipes, setRecipes] = useState(initialRecipes);
-  const [events, setEvents] = useState(initialEvents);
-  const [categories] = useState(initialCategories);
-  const [ingredientCategories] = useState(initialIngredientCategories);
-  const [ingredients, setIngredients] = useState(initialIngredients);
-  const [recipeIngredients, setRecipeIngredients] = useState(initialRecipeIngredients);
-  const [recipeSteps, setRecipeSteps] = useState(initialRecipeSteps);
-  const [duplicationLogs, setDuplicationLogs] = useState(initialDuplicationLogs);
+  const [session, setSession] = useState(() => {
+    const user = getStoredUser();
+    if (!getToken() || !user) return null;
+    const roleMap = { Student: "student", Faculty: "faculty", Admin: "admin", CommunityMember: "member" };
+    return { role: roleMap[user.Role] || "student", name: user.FullName, userId: user.UserID, username: user.Username, email: user.Email };
+  });
+  const [recipes, setRecipes] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [ingredientCategories, setIngredientCategories] = useState([]);
+  const [ingredients, setIngredients] = useState([]);
+  const [recipeIngredients, setRecipeIngredients] = useState([]);
+  const [recipeSteps, setRecipeSteps] = useState([]);
+  const [duplicationLogs, setDuplicationLogs] = useState([]);
+  const [archiveLoading, setArchiveLoading] = useState(true);
+  const [archiveError, setArchiveError] = useState("");
   const pushEvent = useCallback((kind, recipeId, detail, actor) => {
     if (!actor) return;
     setEvents((current) => [
@@ -64,8 +62,118 @@ export function ArchiveProvider({ children }) {
       current.map((recipe) => (recipe.id === recipeId ? updater(recipe) : recipe)),
     );
   }, []);
-  const signIn = useCallback((role) => setSession({ role, name: displayNames[role] }), []);
-  const signOut = useCallback(() => setSession(null), []);
+  const signIn = useCallback(async (identifier, password) => {
+    const data = await authApi.login(identifier, password);
+    const roleMap = { Student: "student", Faculty: "faculty", Admin: "admin", CommunityMember: "member" };
+    const user = data.user;
+    const nextSession = {
+      role: roleMap[user.Role] || "student",
+      name: user.FullName,
+      userId: user.UserID,
+      username: user.Username,
+      email: user.Email,
+    };
+    setSession(nextSession);
+    return nextSession;
+  }, []);
+  const signUp = useCallback(async (payload) => authApi.register(payload), []);
+  const signOut = useCallback(() => {
+    authApi.logout();
+    setSession(null);
+  }, []);
+  const toAssetUrl = useCallback((value) => {
+    if (!value) return "";
+    if (/^https?:\/\//i.test(String(value))) return value;
+    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+    const origin = apiUrl.replace(/\/api\/?$/, "");
+    return `${origin}/${String(value).replace(/^\/+/, "")}`;
+  }, []);
+  const mapRecipe = useCallback((row) => ({
+    ...row,
+    id: Number(row.id),
+    categoryId: Number(row.categoryId),
+    prepTime: Number(row.prepTime || 0),
+    cookTime: Number(row.cookTime || 0),
+    totalDuration: Number(row.totalDuration || 0),
+    dishPhoto: toAssetUrl(row.dishPhoto),
+    pdfFile: toAssetUrl(row.pdfFile),
+    pdfName: row.pdfFile ? String(row.pdfFile).split("/").pop() : "",
+    submittedAt: row.submittedAt ? new Date(row.submittedAt).toLocaleDateString() : "",
+    active: Boolean(row.active),
+    student: row.student || "Unknown contributor",
+    likedBy: [],
+    savedBy: [],
+    comments: [],
+    grade: null,
+    origin: row.isCopy ? "Adapted" : "Original",
+    originNote: row.reviewRemarks || "No additional source note is stored in the database.",
+    version: row.isCopy ? 2 : 1,
+    ingredients: (row.ingredients || []).map((item) => ({
+      ...item, id: Number(item.id), quantity: Number(item.quantity || 0),
+    })),
+    steps: (row.steps || []).map((item) => ({
+      ...item, id: Number(item.id), stepNumber: Number(item.stepNumber),
+    })),
+  }), [toAssetUrl]);
+  const refreshArchive = useCallback(async () => {
+    setArchiveLoading(true);
+    setArchiveError("");
+    try {
+      const [recipeRows, categoryRows, ingredientRows, ingredientCategoryRows] = await Promise.all([
+        api("/recipes"),
+        api("/categories"),
+        api("/ingredients"),
+        api("/ingredients/categories/list"),
+      ]);
+      setRecipes(recipeRows.map(mapRecipe));
+      setCategories(categoryRows.map((row) => ({ ...row, id: Number(row.id), active: true })));
+      setIngredients(ingredientRows.map((row) => ({
+        ...row, id: Number(row.id),
+        ingredientCategoryId: row.categoryId == null ? 1 : Number(row.categoryId),
+      })));
+      setIngredientCategories(ingredientCategoryRows.map((row) => ({ ...row, id: Number(row.id) })));
+    } catch (error) {
+      setRecipes([]);
+      setCategories([]);
+      setArchiveError(error.message || "Unable to load archive data from the database.");
+    } finally {
+      setArchiveLoading(false);
+    }
+  }, [mapRecipe]);
+  const fetchRecipe = useCallback(async (recipeId) => {
+    const row = await api(`/recipes/${recipeId}`);
+    const detail = mapRecipe(row);
+    setRecipes((current) => {
+      const exists = current.some((recipe) => recipe.id === detail.id);
+      return exists
+        ? current.map((recipe) => recipe.id === detail.id ? detail : recipe)
+        : [detail, ...current];
+    });
+    return detail;
+  }, [mapRecipe]);
+  React.useEffect(() => {
+    refreshArchive();
+  }, [refreshArchive, session?.userId]);
+  React.useEffect(() => {
+    if (!getToken()) return;
+    let active = true;
+    authApi.me().then(({ user, student }) => {
+      if (!active) return;
+      const roleMap = { Student: "student", Faculty: "faculty", Admin: "admin", CommunityMember: "member" };
+      setSession({
+        role: roleMap[user.Role] || "student",
+        name: user.FullName,
+        userId: user.UserID,
+        username: user.Username,
+        email: user.Email,
+        student,
+      });
+    }).catch(() => {
+      authApi.logout();
+      if (active) setSession(null);
+    });
+    return () => { active = false; };
+  }, []);
   /* ---------- relationship selectors ---------- */
   const categoryName = useCallback(
     (categoryId) =>
@@ -236,128 +344,56 @@ export function ArchiveProvider({ children }) {
         : null,
     [ingredientNamesFor, recipes, session],
   );
-  const addRecipe = useCallback(
-    (input) => {
-      if (!session || session.role !== "student")
-        return {
-          ok: false,
-          message: "Only accounts with the student role can submit culinary outputs.",
-        };
-      const check = checkDuplicate(
-        {
-          title: input.title,
-          categoryId: input.categoryId,
-          ingredientNames: input.ingredients.map((line) => line.name),
-          studentName: session.name,
-          originalRecipeId: input.originalRecipeId,
-        },
-        recipes,
-        ingredientNamesFor,
-      );
-      if (!check) return { ok: false, message: "Add a recipe title before submitting." };
-      const logBase = {
-        attemptedTitle: input.title,
-        studentName: session.name,
-        matchedRecipeId: check.match?.id ?? null,
-        similarity: check.similarity,
-        result: check.result,
-        checkedAt: stamp(),
-      };
-      if (!check.allowed) {
-        setDuplicationLogs((current) => [
-          ...current,
-          { id: nextNumber(current), recipeId: null, ...logBase },
-        ]);
-        return { ok: false, message: check.message };
-      }
-      const original = input.originalRecipeId
-        ? (recipes.find((recipe) => recipe.id === input.originalRecipeId) ?? null)
-        : null;
-      const recipe = {
-        id: nextId("r"),
-        title: input.title.trim(),
-        description: input.description.trim(),
-        categoryId: input.categoryId,
-        student: session.name,
-        submittedAt: today(),
-        dishPhoto: input.dishPhoto,
-        pdfFile: input.pdfFile,
-        pdfName: input.pdfName,
-        prepTime: input.prepTime,
-        cookTime: input.cookTime,
-        totalDuration: input.prepTime + input.cookTime,
-        status: "Pending",
-        reviewRemarks: "",
-        reviewedBy: null,
-        reviewedAt: null,
-        active: true,
-        origin: input.origin,
-        originNote: input.originNote.trim(),
-        originalRecipeId: original ? (original.originalRecipeId ?? original.id) : null,
-        version: original ? original.version + 1 : 1,
-        likedBy: [],
-        savedBy: [],
-        comments: [],
-        grade: null,
-      };
-      // ingredient: reuse a row with the same name, otherwise insert one.
-      const knownIngredients = [...ingredients];
-      const lines = [];
-      let lineId = nextNumber(recipeIngredients);
-      input.ingredients.forEach((draft) => {
-        let ingredient = knownIngredients.find(
-          (entry) => normalise(entry.name) === normalise(draft.name),
-        );
-        if (!ingredient) {
-          ingredient = {
-            id: nextNumber(knownIngredients),
-            name: draft.name.trim(),
-            ingredientCategoryId: draft.ingredientCategoryId,
-          };
-          knownIngredients.push(ingredient);
-        }
-        lines.push({
-          id: lineId++,
-          recipeId: recipe.id,
-          ingredientId: ingredient.id,
-          quantity: Number(draft.quantity),
-          unit: draft.unit,
-        });
-      });
-      // recipe_step: step_number follows the order on the form.
-      let stepId = nextNumber(recipeSteps);
-      const stepRows = input.steps.map((step, index) => ({
-        id: stepId++,
-        recipeId: recipe.id,
-        stepNumber: index + 1,
-        instruction: step.instruction.trim(),
-      }));
-      setIngredients(knownIngredients);
-      setRecipeIngredients((current) => [...current, ...lines]);
-      setRecipeSteps((current) => [...current, ...stepRows]);
-      setRecipes((current) => [recipe, ...current]);
-      setDuplicationLogs((current) => [
-        ...current,
-        { id: nextNumber(current), recipeId: recipe.id, ...logBase },
-      ]);
-      pushEvent(
-        "submitted",
-        recipe.id,
-        original
-          ? `submitted version ${recipe.version} of ${recipe.title}`
-          : `submitted ${recipe.title} for review`,
-        session,
-      );
-      return { ok: true, recipe, check };
-    },
-    [ingredientNamesFor, ingredients, pushEvent, recipeIngredients, recipeSteps, recipes, session],
-  );
+  const addRecipe = useCallback(async (input) => {
+    if (!session || session.role !== "student") {
+      return { ok: false, message: "Only student accounts can submit culinary outputs." };
+    }
+    const check = checkDuplicate({
+      title: input.title,
+      categoryId: input.categoryId,
+      ingredientNames: input.ingredients.map((line) => line.name),
+      studentName: session.name,
+      originalRecipeId: input.originalRecipeId,
+    }, recipes, ingredientNamesFor);
+    if (!check) return { ok: false, message: "Add a recipe title before submitting." };
+    if (!check.allowed) return { ok: false, message: check.message };
+    const form = new FormData();
+    form.append("title", input.title.trim());
+    form.append("description", input.description.trim());
+    form.append("categoryId", String(input.categoryId));
+    form.append("prepTime", String(input.prepTime || 0));
+    form.append("cookTime", String(input.cookTime || 0));
+    form.append("ingredients", JSON.stringify(input.ingredients.map((line) => ({
+      name: line.name.trim(),
+      categoryId: Number(line.ingredientCategoryId) || null,
+      quantity: Number(line.quantity),
+      unit: line.unit,
+    }))));
+    form.append("steps", JSON.stringify(input.steps.map((step) => ({
+      instruction: step.instruction.trim(),
+    }))));
+    if (input.originalRecipeId) form.append("originalRecipeId", String(input.originalRecipeId));
+    form.append("dishPhoto", input.dishPhoto);
+    form.append("pdfFile", input.pdfFile);
+    try {
+      const response = await api("/recipes", { method: "POST", body: form });
+      const created = mapRecipe(response.recipe);
+      setRecipes((current) => [created, ...current.filter((recipe) => recipe.id !== created.id)]);
+      return { ok: true, recipe: created, check };
+    } catch (error) {
+      return { ok: false, message: error.message || "Recipe submission failed." };
+    }
+  }, [ingredientNamesFor, mapRecipe, recipes, session]);
   const value = useMemo(
     () => ({
       session,
       recipes,
       events,
       categories,
+      archiveLoading,
+      archiveError,
+      refreshArchive,
+      fetchRecipe,
       ingredientCategories,
       ingredients,
       duplicationLogs,
@@ -368,6 +404,7 @@ export function ArchiveProvider({ children }) {
         moderate,
       },
       signIn,
+      signUp,
       signOut,
       toggleLike,
       toggleSave,
@@ -393,6 +430,10 @@ export function ArchiveProvider({ children }) {
     [
       addComment,
       addRecipe,
+      archiveError,
+      archiveLoading,
+      refreshArchive,
+      fetchRecipe,
       approveRecipe,
       canSeeReview,
       canView,
@@ -414,6 +455,7 @@ export function ArchiveProvider({ children }) {
       session,
       setActive,
       signIn,
+      signUp,
       signOut,
       toggleLike,
       toggleSave,
