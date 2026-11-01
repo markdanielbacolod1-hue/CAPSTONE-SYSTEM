@@ -18,37 +18,26 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/uploads", express.static(path.resolve(process.env.UPLOAD_DIR || "uploads")));
 
-const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 30,
-});
-
-app.use("/api/auth", authLimiter, require("./routes/authRoutes"));
+app.use(
+  "/api/auth",
+  rateLimit({ windowMs: 15 * 60 * 1000, max: 30 }),
+  require("./routes/authRoutes")
+);
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/recipes", require("./routes/recipeRoutes"));
 app.use("/api/categories", require("./routes/categoryRoutes"));
 app.use("/api/ingredients", require("./routes/ingredientRoutes"));
 app.use("/api/favorites", require("./routes/favoriteRoutes"));
 app.use("/api/duplication-logs", require("./routes/duplicationRoutes"));
+app.use("/api/activity-logs", require("./routes/activityRoutes"));
 
-// Health Check Endpoint
 app.get("/api/health", async (req, res) => {
-    try {
-        await pool.query("SELECT 1");
-
-        res.status(200).json({
-            status: "ok",
-            database: "connected"
-        });
-    } catch (error) {
-        console.error("MySQL Error:", error.message);
-
-        res.status(503).json({
-            status: "error",
-            database: "disconnected",
-            message: error.message
-        });
-    }
+  try {
+    await pool.query("SELECT 1");
+    res.json({ status: "ok", database: "connected" });
+  } catch (e) {
+    res.status(503).json({ status: "error", database: "disconnected" });
+  }
 });
 
 app.use(notFound);

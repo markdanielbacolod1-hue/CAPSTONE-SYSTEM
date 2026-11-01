@@ -40,6 +40,7 @@ export function ArchiveProvider({ children }) {
   const [recipeIngredients, setRecipeIngredients] = useState([]);
   const [recipeSteps, setRecipeSteps] = useState([]);
   const [duplicationLogs, setDuplicationLogs] = useState([]);
+  const [activityLogs, setActivityLogs] = useState([]);
   const [archiveLoading, setArchiveLoading] = useState(true);
   const [archiveError, setArchiveError] = useState("");
   const pushEvent = useCallback((kind, recipeId, detail, actor) => {
@@ -313,6 +314,17 @@ export function ArchiveProvider({ children }) {
     await refreshArchive();
   }, [refreshArchive, session]);
   const fetchUsers = useCallback(async () => api("/users"), []);
+  const fetchActivityLogs = useCallback(async () => {
+    const rows = await api("/activity-logs");
+    setActivityLogs(rows);
+    return rows;
+  }, []);
+  const manageRecord = useCallback(async (resource, id, method, payload) => {
+    const path = resource === "ingredient-categories" ? `/ingredients/categories/${id || ""}` : `/${resource}/${id || ""}`;
+    const result = await api(path.replace(/\/$/, ""), { method, body: payload });
+    await refreshArchive();
+    return result;
+  }, [refreshArchive]);
   const updateUser = useCallback(async (userId, changes) => {
     const result = await api(`/users/${userId}`, { method: "PUT", body: changes });
     return result;
@@ -389,6 +401,9 @@ export function ArchiveProvider({ children }) {
       signOut,
       fetchUsers,
       updateUser,
+      fetchActivityLogs,
+      activityLogs,
+      manageRecord,
       toggleLike,
       toggleSave,
       addComment,
@@ -419,6 +434,9 @@ export function ArchiveProvider({ children }) {
       fetchRecipe,
       fetchUsers,
       updateUser,
+      fetchActivityLogs,
+      activityLogs,
+      manageRecord,
       approveRecipe,
       canSeeReview,
       canView,

@@ -16,6 +16,9 @@ import { useArchive } from "../contexts/ArchiveContext";
 import { Archive } from "./Archive";
 import { Feed } from "./Feed";
 import { SubmissionForm } from "./SubmissionForm";
+import { CategoryManager } from "./CategoryManager";
+import { IngredientManager } from "./IngredientManager";
+import { ActivityLog } from "./ActivityLog";
 export function Dashboard({ role, onSignOut, onOpenRecipe }) {
   const { recipes, session, events, canView, categories, ingredientCategories, ingredients } =
     useArchive();
@@ -176,36 +179,9 @@ export function Dashboard({ role, onSignOut, onOpenRecipe }) {
           )}
           {tab === "categories" && (
             <div className="space-y-6">
-              <ManagementList
-                title="Category management"
-                description="Recipe categories, used by the submission form and archive filters."
-                rows={categories.map((category) => {
-                  const count = recipes.filter(
-                    (recipe) => recipe.categoryId === category.id,
-                  ).length;
-                  return [
-                    category.name,
-                    `${count} recipe ${count === 1 ? "record" : "records"}`,
-                    category.active ? "Active" : "Inactive",
-                  ];
-                })}
-                onUpdate={setNotice}
-              />
-              <ManagementList
-                title="Ingredient categories"
-                description="Used to classify every ingredient a student adds to a recipe."
-                rows={ingredientCategories.map((category) => {
-                  const count = ingredients.filter(
-                    (ingredient) => ingredient.ingredientCategoryId === category.id,
-                  ).length;
-                  return [
-                    category.name,
-                    `${count} ${count === 1 ? "ingredient" : "ingredients"}`,
-                    "Active",
-                  ];
-                })}
-                onUpdate={setNotice}
-              />
+              <CategoryManager onUpdate={setNotice} />
+              <CategoryManager ingredient onUpdate={setNotice} />
+              <IngredientManager />
             </div>
           )}
           {tab === "roles" && (
@@ -227,7 +203,7 @@ export function Dashboard({ role, onSignOut, onOpenRecipe }) {
           )}
           {tab === "activity" && (
             <div className="space-y-8">
-              <Feed scope="admin" onOpenRecipe={onOpenRecipe} />
+              <ActivityLog />
               <DuplicationLogTable onOpenRecipe={onOpenRecipe} />
             </div>
           )}
