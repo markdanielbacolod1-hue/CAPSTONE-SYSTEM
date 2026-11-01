@@ -146,7 +146,7 @@ function RecipeCard({ recipe, onOpenRecipe }) {
             VIEW
           </button>
         </div>
-        {can.grade && recipe.status === "Pending" && (
+        {can.moderate && recipe.status === "Pending" && (
           <ReviewActions recipe={recipe} layout="inline" />
         )}
       </div>

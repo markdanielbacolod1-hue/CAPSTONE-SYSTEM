@@ -285,57 +285,38 @@ export function ArchiveProvider({ children }) {
   /* ---------- review (faculty) ---------- */
   const gradeRecipe = useCallback(
     (recipeId, score, remark) => {
-      if (!session || session.role !== "faculty") return;
-      updateRecipe(recipeId, (recipe) => ({
-        ...recipe,
-        grade: { facultyName: session.name, score, remark: remark.trim(), at: stamp() },
-      }));
-      const recipe = recipes.find((entry) => entry.id === recipeId);
-      if (recipe) pushEvent("grade", recipeId, `graded ${recipe.title} at ${score}`, session);
+      // The current MySQL schema has no grade columns/table; do not claim this is persisted.
+      return Promise.reject(new Error("Faculty grading is not yet supported by the current database schema."));
     },
-    [pushEvent, recipes, session, updateRecipe],
+    [],
   );
-  /** Sets submission_status and review_remarks only. is_active is left alone. */
-  const decide = useCallback(
-    (recipeId, approved, note) => {
-      if (!session || session.role !== "faculty") return;
-      updateRecipe(recipeId, (recipe) => ({
-        ...recipe,
-        status: approved ? "Approved" : "Rejected",
-        reviewRemarks: note.trim(),
-        reviewedBy: session.name,
-        reviewedAt: stamp(),
-      }));
-      const recipe = recipes.find((entry) => entry.id === recipeId);
-      if (recipe) {
-        pushEvent(
-          approved ? "approved" : "rejected",
-          recipeId,
-          approved ? `approved ${recipe.title}` : `rejected ${recipe.title}`,
-          session,
-        );
-      }
-    },
-    [pushEvent, recipes, session, updateRecipe],
-  );
+  const decide = useCallback(async (recipeId, approved, note) => {
+    if (!session || !["faculty", "admin"].includes(session.role)) {
+      throw new Error("Only faculty and administrators can review recipes.");
+    }
+    await api(`/recipes/${recipeId}/review`, {
+      method: "PATCH",
+      body: { status: approved ? "Approved" : "Rejected", remarks: note || "" },
+    });
+    await refreshArchive();
+  }, [refreshArchive, session]);
   const approveRecipe = useCallback((recipeId, note) => decide(recipeId, true, note), [decide]);
   const rejectRecipe = useCallback((recipeId, note) => decide(recipeId, false, note), [decide]);
-  /** Sets is_active only. Faculty and administrators. */
-  const setActive = useCallback(
-    (recipeId, active) => {
-      if (!moderate) return;
-      updateRecipe(recipeId, (recipe) => ({ ...recipe, active }));
-      const recipe = recipes.find((entry) => entry.id === recipeId);
-      if (recipe)
-        pushEvent(
-          "visibility",
-          recipeId,
-          `set ${recipe.title} to ${active ? "active" : "inactive"}`,
-          session,
-        );
-    },
-    [moderate, pushEvent, recipes, session, updateRecipe],
-  );
+  const setActive = useCallback(async (recipeId, active) => {
+    if (!session || !["faculty", "admin"].includes(session.role)) {
+      throw new Error("Only faculty and administrators can change recipe visibility.");
+    }
+    await api(`/recipes/${recipeId}/active`, {
+      method: "PATCH",
+      body: { active },
+    });
+    await refreshArchive();
+  }, [refreshArchive, session]);
+  const fetchUsers = useCallback(async () => api("/users"), []);
+  const updateUser = useCallback(async (userId, changes) => {
+    const result = await api(`/users/${userId}`, { method: "PUT", body: changes });
+    return result;
+  }, []);
   /* ---------- submission (students) ---------- */
   const previewDuplicateCheck = useCallback(
     (draft) =>
@@ -406,6 +387,8 @@ export function ArchiveProvider({ children }) {
       signIn,
       signUp,
       signOut,
+      fetchUsers,
+      updateUser,
       toggleLike,
       toggleSave,
       addComment,
@@ -434,6 +417,8 @@ export function ArchiveProvider({ children }) {
       archiveLoading,
       refreshArchive,
       fetchRecipe,
+      fetchUsers,
+      updateUser,
       approveRecipe,
       canSeeReview,
       canView,
@@ -457,6 +442,8 @@ export function ArchiveProvider({ children }) {
       signIn,
       signUp,
       signOut,
+      fetchUsers,
+      updateUser,
       toggleLike,
       toggleSave,
     ],

@@ -38,6 +38,8 @@ export function RecipeDetail({ recipe, onClose, onRequestSignIn }) {
   const [comment, setComment] = useState("");
   const [score, setScore] = useState(recipe.grade ? String(recipe.grade.score) : "");
   const [remark, setRemark] = useState(recipe.grade?.remark ?? "");
+  const [visibilityBusy, setVisibilityBusy] = useState(false);
+  const [visibilityError, setVisibilityError] = useState("");
   const liked = isLiked(recipe);
   const saved = isSaved(recipe);
   const publicRecipe = isPublic(recipe);
@@ -259,13 +261,21 @@ export function RecipeDetail({ recipe, onClose, onRequestSignIn }) {
                     <span className="font-black">{recipe.active ? "Active" : "Inactive"}</span>
                     {can.moderate && (
                       <button
-                        onClick={() => setActive(recipe.id, !recipe.active)}
+                        disabled={visibilityBusy}
+                        onClick={async () => {
+                          setVisibilityBusy(true);
+                          setVisibilityError("");
+                          try { await setActive(recipe.id, !recipe.active); }
+                          catch (error) { setVisibilityError(error.message || "Could not update visibility."); }
+                          finally { setVisibilityBusy(false); }
+                        }}
                         className="rounded-lg border-2 border-black px-3 py-1 text-xs font-black"
                       >
                         {recipe.active ? "Set inactive" : "Set active"}
                       </button>
                     )}
                   </dd>
+                  {visibilityError && <dd role="alert" className="mt-1 text-xs font-bold text-[#a33]">{visibilityError}</dd>}
                   <dd className="text-xs text-neutral-600">
                     {publicRecipe
                       ? "Shown in the public archive."
@@ -311,6 +321,11 @@ export function RecipeDetail({ recipe, onClose, onRequestSignIn }) {
           )}
 
           {can.grade && (
+            <p className="mt-6 rounded-xl border border-dashed border-[#f57696] bg-[#fff4f7] p-3 text-xs text-neutral-700">
+              Recipe approval and review remarks are saved to MySQL. Numeric grading is not yet available because the current database has no grade field or grading table.
+            </p>
+          )}
+          {false && can.grade && (
             <form
               onSubmit={submitGrade}
               className="mt-6 rounded-2xl border-2 border-black bg-white p-4"

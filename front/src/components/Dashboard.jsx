@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIcon,
   BookOpenCheckIcon,
@@ -161,19 +161,7 @@ export function Dashboard({ role, onSignOut, onOpenRecipe }) {
               onOpenRecipe={onOpenRecipe}
             />
           )}
-          {tab === "users" && (
-            <ManagementList
-              title="User management"
-              description="Create, verify, deactivate, and search accounts."
-              rows={[
-                ["Maria Santos", "Student · BSHM 3A", "Active"],
-                ["Jero Rey Sosa", "Faculty · Hospitality", "Active"],
-                ["Community Member", "Member · Read and engage", "Active"],
-                ["Ana Villanueva", "Faculty · Hospitality", "Pending"],
-              ]}
-              onUpdate={setNotice}
-            />
-          )}
+          {tab === "users" && <UserManagement onUpdate={setNotice} />}
           {tab === "recipes" && (
             <Archive
               title={member ? "Recipes" : "Recipe management"}
@@ -281,7 +269,15 @@ function getNavigation(role) {
   ];
 }
 function Overview({ role, counts, onViewAll, onOpenRecipe }) {
-  const { recipes, session, isPublic, categoryName } = useArchive();
+  const { recipes, session, isPublic, categoryName, fetchUsers } = useArchive();
+  const [userStats, setUserStats] = useState({ total: 0, faculty: 0 });
+  useEffect(() => {
+    if (role !== "admin") return;
+    fetchUsers().then((rows) => setUserStats({
+      total: rows.length,
+      faculty: rows.filter((user) => user.role === "Faculty").length,
+    })).catch(() => setUserStats({ total: 0, faculty: 0 }));
+  }, [fetchUsers, role]);
   const moderator = role === "faculty" || role === "admin";
   // Students see their own work; members see only the public archive; faculty and admin see everything.
   const recent =
@@ -293,8 +289,8 @@ function Overview({ role, counts, onViewAll, onOpenRecipe }) {
   const stats =
     role === "admin"
       ? [
-          ["ACTIVE USERS", "64", "58 verified this term"],
-          ["FACULTY", "6", "all accounts active"],
+          ["REGISTERED USERS", String(userStats.total), "accounts in the user table"],
+          ["FACULTY", String(userStats.faculty), "faculty accounts"],
           [
             "RECIPES",
             String(recipes.length),
@@ -483,17 +479,102 @@ function DuplicationLogTable({ onOpenRecipe }) {
     </section>
   );
 }
+function UserManagement({ onUpdate }) {
+  const { fetchUsers, updateUser } = useArchive();
+  const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [savingId, setSavingId] = useState(null);
+  const [error, setError] = useState("");
+  const load = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const rows = await fetchUsers();
+      setUsers(rows);
+      setRoles(Object.fromEntries(rows.map((user) => [user.id, user.role])));
+    } catch (err) {
+      setError(err.message || "Unable to load user accounts.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => { load(); }, []);
+  const saveRole = async (user) => {
+    setSavingId(user.id);
+    setError("");
+    try {
+      await updateUser(user.id, { role: roles[user.id] });
+      onUpdate?.(`Updated ${user.fullName}'s account role.`);
+      await load();
+    } catch (err) {
+      setError(err.message || "Unable to update account role.");
+    } finally {
+      setSavingId(null);
+    }
+  };
+  return (
+    <section className="rounded-2xl border-2 border-[#f57696] bg-white p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-black">User management</h2>
+          <p className="mt-1 text-sm text-neutral-600">Accounts loaded from the user table. Administrators can update account roles.</p>
+        </div>
+        <button onClick={load} className="rounded-lg border-2 border-black px-3 py-2 text-sm font-bold">Refresh</button>
+      </div>
+      {error && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
+      {loading ? <p className="mt-5 text-sm font-bold">Loading user accounts...</p> : (
+        <div className="mt-5 overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-[#fbd2dd] text-xs uppercase">
+              <tr><th className="p-3">Name / username</th><th className="p-3">Email</th><th className="p-3">Registered</th><th className="p-3">Role</th><th className="p-3">Action</th></tr>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.id} className="border-t border-[#fbd2dd]">
+                  <td className="p-3"><p className="font-bold">{user.fullName}</p><p className="text-xs text-neutral-500">@{user.username}</p></td>
+                  <td className="p-3">{user.email}</td>
+                  <td className="p-3 whitespace-nowrap">{user.dateRegistered ? new Date(user.dateRegistered).toLocaleDateString() : "—"}</td>
+                  <td className="p-3">
+                    <select
+                      aria-label={`Role for ${user.fullName}`}
+                      value={roles[user.id] || user.role}
+                      onChange={(event) => setRoles((current) => ({ ...current, [user.id]: event.target.value }))}
+                      className="rounded-lg border-2 border-[#f57696] bg-white p-2 text-xs font-bold"
+                    >
+                      <option value="Student">Student</option>
+                      <option value="Faculty">Faculty</option>
+                      <option value="CommunityMember">Community Member</option>
+                      <option value="Admin">Administrator</option>
+                    </select>
+                  </td>
+                  <td className="p-3">
+                    <button
+                      disabled={savingId === user.id || roles[user.id] === user.role}
+                      onClick={() => saveRole(user)}
+                      className="rounded-lg bg-black px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
+                    >{savingId === user.id ? "Saving..." : "Save role"}</button>
+                  </td>
+                </tr>
+              ))}
+              {users.length === 0 && <tr><td colSpan={5} className="p-5 text-center">No user accounts found.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="mt-4 text-xs text-neutral-500">Account deletion is not provided here because the current database has related records protected by foreign keys and no separate account deactivation field.</p>
+    </section>
+  );
+}
 function FacultyStudents() {
   return (
-    <ManagementList
-      title="Student management"
-      description="Manage class access and student accounts."
-      rows={[
-        ["Maria Santos", "BSHM 3A", "Active"],
-        ["Juan Dela Cruz", "BSHM 3A", "Active"],
-        ["Anna Reyes", "BSHM 3B", "Pending"],
-      ]}
-    />
+    <section className="rounded-2xl border-2 border-[#f57696] bg-white p-6">
+      <h2 className="text-xl font-black">Student account management</h2>
+      <p className="mt-2 text-sm text-neutral-600">
+        Account listing and role changes are currently available in the administrator workspace.
+        Faculty can review student recipe submissions from the Recipe reviews tab.
+      </p>
+    </section>
   );
 }
 function ManagementList({ title, description, rows, onUpdate }) {
